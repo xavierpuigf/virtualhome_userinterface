@@ -1,0 +1,30 @@
+button {
+    padding: 10px;
+    margin: 2px;
+}
+
+img {
+    border-style: solid;
+}
+
+.buttoncontainer {
+    border: solid;
+    padding: 7px;
+    border-width: 1px;
+    overflow: scroll;
+}
+
+.topbuttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+}
+
+.statuscontainer span {
+  font-size: larger;
+
+}
+
+span {
+    font-size: larger;
+}
