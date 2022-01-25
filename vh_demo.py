@@ -25,9 +25,7 @@ from datetime import datetime
 import time
 from PIL import Image
 import io
-import agents
 import base64
-from util import utils_rl_agent
 
 import matplotlib.pyplot as plt
 
@@ -73,12 +71,13 @@ parser = argparse.ArgumentParser(description='Collection data simulator.')
 parser.add_argument("--deployment", type=str, choices=["local", "remote"], default="remote")
 parser.add_argument("--simversion", type=str, choices=["v1", "v2"], default="v1")
 parser.add_argument("--portflask", type=int, default=5005)
+parser.add_argument("--execname", type=str, help="The location of the executable name")
 parser.add_argument("--portvh", type=int, default=8080)
 parser.add_argument("--task_id", type=int, default=0)
 parser.add_argument('--showmodal', action='store_true')
-parser.add_argument("--task_group", type=int, nargs="+", default=None, help='usage: --task group 41 42 43 44')
+parser.add_argument("--task_group", type=int, nargs="+", default=[0], help='usage: --task group 41 42 43 44')
 parser.add_argument("--exp_name", type=str, default="debugtest")
-parser.add_argument("--extra_agent", type=str, nargs="+", default=None) # none, planner, rl_mcts
+parser.add_argument("--extra_agent", type=str, nargs="+", default=['none']) # none, planner, rl_mcts
 
 
 args = parser.parse_args()
@@ -333,6 +332,7 @@ def reset(scene, init_graph=None, init_room=[]):
     comm.add_character('Chars/Female1', initial_room=init_room[0])
     extra_agent_name = extra_agent_list[task_index_shuffle[task_index]]
     if extra_agent_name != "none":
+        import agents
         comm.add_character('Chars/Male1', initial_room=init_room[1])
 
     s, g = comm.environment_graph()
@@ -342,17 +342,6 @@ def reset(scene, init_graph=None, init_room=[]):
     #image_top = images[0]
     
 
-    # Transpose
-    # image_top = np.transpose(image_top, (1,0,2))
-
-    # s, instance_colors_reverse = comm.instance_colors()
-    # instance_colors = {}
-    # for c,v in instance_colors_reverse.items():
-    #     color = tuple([int(round(x*255)) for x in v])
-    #     instance_colors[color] = c
-
-    # s, g = comm.environment_graph()
-    # print("HEEERE")
     if extra_agent_name == "planner":
         extra_agent = agents.MCTS_agent(agent_id=2,
                                        char_index=1,
@@ -395,7 +384,8 @@ def reset(scene, init_graph=None, init_room=[]):
         print("GOAL", goal_spec, temp_task_id)
 
     elif extra_agent_name  == 'rl_mcts':
-        trained_model_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/'
+        from util import utils_rl_agent
+        trained_model_path = 'ADD HERE the training path'
         model_path = (f'{trained_model_path}/trained_models/env.virtualhome/'
                       'task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/'
                       'mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32_finetuned/'
@@ -606,6 +596,7 @@ if __name__ == '__main__':
             'B3': 'rl_mcts',
     }
     extra_agent_list = [code2agent[name] for name in args.extra_agent]
+    print(extra_agent_list)
     random.shuffle(task_index_shuffle)
 
     #random.Random(args.exp_name).shuffle(task_index_shuffle)
@@ -623,7 +614,7 @@ if __name__ == '__main__':
         temp_task_id = args.task_id
 
     graph_save_dir = 'record_graph/{}/task_{}/time.{}'.format(args.exp_name, temp_task_id, time_str)
-    comm = comm_unity.UnityCommunication(port=str(args.portvh))
+    comm = comm_unity.UnityCommunication(file_name=args.execname, port=str(args.portvh), no_graphics=True)
 
 
 

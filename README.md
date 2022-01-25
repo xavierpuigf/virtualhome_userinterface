@@ -1,6 +1,8 @@
 # VirtualHome Data Collection 
 Interface for collecting experiments in VirtualHome
 
+![img](assets/screenshot_interface.png)
+
 ## Setup
 Clone the VirtualHome repo inside this folder, or create a symlink.
 
@@ -9,23 +11,24 @@ cd virtualhome_userinterface
 git clone https://github.com/xavierpuigf/virtualhome.git
 ```
 
-Download the Unity Executable and put it under `simulation/unity_simulator`.
+Download and unzip the Unity Executable.
 
 ```
-cd virtualhome
-# Download 'exec_linux.06.04.x86_64' and 'exec_linux.06.04_Data' and put them under 'simulation/unity_simulator 
-virtualhome/simulation/unity_simulator/exec_linux.06.04.x86_64 -batchmode & 
+wget http://virtual-home.org/release/simulator/last_release/linux_exec.zip
+unzip linux_exec.zip
 ```
 
 If you are running the demo locally, run:
 
 ```
-python vh_demo.py --deployment local
+export EXEC="virtualhome/simulation/linux_exec.v2.2.4.x86_64"
+python vh_demo.py --deployment local --execname $EXEC
 ```
 Otherwise run
 
 ```
-python vh_demo.py --deployment remote
+export EXEC="virtualhome/simulation/linux_exec.v2.2.4.x86_64"
+python vh_demo.py --deployment remote --execname $EXEC
 ```
 
 ## Graph to GIF

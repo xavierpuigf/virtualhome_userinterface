@@ -1,6 +1,7 @@
 import json
 import os
-
+import matplotlib
+matplotlib.use('agg')
 import plotly.graph_objects as go
 import plotly.io
 import pdb
@@ -98,7 +99,7 @@ def plot_graph(graph, char_id=1, visible_ids=None, action_ids=None):
     visible_nodes = [node for node in graph['nodes'] if node['id'] in visible_ids]
     action_nodes = [node for node in graph['nodes'] if node['id'] in action_ids]
 
-    goal_nodes = [node for node in graph['nodes'] if node['class_name'] == 'cupcake']
+    # goal_nodes = [node for node in graph['nodes'] if node['class_name'] == 'cupcake']
     #object_data2 = [create_cube(n, color='green', cont=True, opacity=0.2) for n in grabbed_obj]
     object_data = [create_cube(n, color='blue', cont=True, opacity=0.1) for n in container_and_surface]
     object_data_vis = [create_cube(n, color='green', cont=True, opacity=0.2) for n in visible_nodes]
@@ -111,7 +112,7 @@ def plot_graph(graph, char_id=1, visible_ids=None, action_ids=None):
     fig.add_traces(data=object_data_vis)
     fig.add_traces(data=object_data_action)
     fig.add_traces(data=room_data)
-    fig.add_traces(data=create_points(goal_nodes))
+    # fig.add_traces(data=create_points(goal_nodes))
 
     fig.update_layout(scene_aspectmode='data')
     return fig

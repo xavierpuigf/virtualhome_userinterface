@@ -14,6 +14,17 @@ img {
     overflow: scroll;
 }
 
+.buttoncontainer.closedbox {
+
+  background: rgb(100,100,100)
+}
+
+.buttoncontainer.openbox {
+  background: rgb(220,220,220)
+
+}
+
+
 .topbuttons {
       display: flex;
       align-items: center;

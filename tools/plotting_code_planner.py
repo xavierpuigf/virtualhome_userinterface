@@ -1,4 +1,6 @@
 import json
+from scipy.spatial.transform import Rotation as R
+
 import pickle as pkl
 import ipdb
 import os
@@ -8,12 +10,14 @@ import plotly.io
 import pdb
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 import plotly.offline
 from tqdm import tqdm
 import cv2
 import glob
 import subprocess
+import re
+import numpy as np
 
 dict_info = {
     "objects_inside": [
@@ -49,10 +53,16 @@ dict_info = {
         "milkshake", "plate", "poundcake", "remotecontrol", "waterglass", "wine", "wineglass"
     ]
 }
+#color_code = map()
 
+#def create_sphere(nodes, color="yellow", opacity=0.8):
+#    c, b = node['bounding_box']['center'], node['bounding_box']['size']
+##    if cont:
+#    circle_data = go.
+#    return circle_data
 
-def create_cube(n, color='lightpink', opacity=0.1, cont=False):
-    c, b = n['bounding_box']['center'], n['bounding_box']['size']
+def create_cube(nodes, color='lightpink', opacity=0.1, cont=False):
+    c, b = nodes['bounding_box']['center'], nodes['bounding_box']['size']
 
     if cont:
         xp = [c[0] - b[0] / 2., c[0] + b[0] / 2.] * 4
@@ -150,7 +160,7 @@ def get_bounds(bounds):
     return (minx, maxx), (miny, maxy)
 
 
-def add_box(nodes, args_rect):
+def add_box(nodes, args_shape):
     rectangles = []
     centers = [[], []]
     for node in nodes:
@@ -159,24 +169,191 @@ def add_box(nodes, args_rect):
         minx, miny = cx - w / 2., cy - h / 2.
         centers[0].append(cx)
         centers[1].append(cy)
-        if args_rect is not None:
+        if args_shape is not None:
             rectangles.append(
-                Rectangle((minx, miny), w, h, **args_rect)
+                Rectangle((minx, miny), w, h, **args_shape)
             )
     return rectangles, centers
 
+def add_circle(nodes, args_shape):
+    circles = []
+    centers = [[], []]
+    for node in nodes:
+        cx, cy = node['bounding_box']['center'][0], node['bounding_box']['center'][2]
+        if 'radius' not in args_shape: 
+            w, h = node['bounding_box']['size'][0], node['bounding_box']['size'][2]
+            radius = max(h,w)/2.
+            args_shape['radius'] = radius
 
-def add_boxes(nodes, ax, points=None, rect=None):
+        centers[0].append(cx)
+        centers[1].append(cy)
+        if args_shape is not None:
+            circles.append(
+                    Circle((cx,cy), **args_shape)
+                              )
+    return circles, centers
+
+def add_boxes(nodes, ax, points=None, args_shape=None):
     rectangles = []
-    rectangles_class, center = add_box(nodes, rect)
+    rectangles_class, center = add_box(nodes, args_shape)
     rectangles += rectangles_class
     if points is not None:
         ax.scatter(center[0], center[1], **points)
-    if rect is not None and len(rectangles) > 0:
+    if args_shape is not None and len(rectangles) > 0:
         ax.add_patch(rectangles[0])
         collection = PatchCollection(rectangles, match_original=True)
         ax.add_collection(collection)
 
+def add_circles(nodes, ax, points=None, args_shape=None):
+    circles = []
+    circles_class, center = add_circle(nodes, args_shape)
+    circles += circles_class
+    if points is not None:
+        ax.scatter(center[0], center[1], **points)
+    if args_shape is not None and len(circles) > 0:
+        ax.add_patch(circles[0])
+        collection = PatchCollection(circles, match_original=True)
+        ax.add_collection(collection)
+
+
+prev_cx, prev_cy = {},{}
+def add_arrow(nodes, args_shape):
+    arrows = []
+    centers = [[], []]
+    if 'node_radius' not in args_shape:
+        node_radius = None
+    else:
+        node_radius = args_shape['node_radius']
+    del args_shape['node_radius'] 
+    for node in nodes:
+        if not node['id'] not in prev_cx and 'obj_transform' not in node.keys():
+            
+            cx, cy = node['bounding_box']['center'][0], node['bounding_box']['center'][2]
+            w, h = node['bounding_box']['size'][0], node['bounding_box']['size'][2]
+            prev_cx[node['id']], prev_cy[node['id']] = cx, cy
+
+        else:
+            curr_cx, curr_cy = node['bounding_box']['center'][0], node['bounding_box']['center'][2]
+            if 'obj_transform' in node:
+                rot = node['obj_transform']['rotation']
+                # print('rotation: ', rot)
+                rot = R.from_quat(rot)
+                euler = rot.as_euler('xzy')
+                # dchange = np.sin(euler[1])*np.cos(euler[0]), np.cos(euler[1])*np.sin(euler[0])
+                # dchange = np.sin(euler[1]+euler[0]), np.cos(euler[1]+euler[0])
+                x = np.cos(euler[2])*np.cos(euler[1])
+                y = np.sin(euler[2])*np.cos(euler[1])
+                z = np.sin(euler[1])
+                dchange = y, x
+                # print('euler: ', euler)
+                # print('dchange 1: x: {}, y: {}'.format(dchange[0], dchange[1]))
+            else:
+                dchange = [curr_cx - prev_cx[node['id']], curr_cy - prev_cy[node['id']]]
+                dchange = dchange / np.sqrt(np.sum(np.square(dchange)))
+            
+            if 'node_radius' is None:
+                w, h = node['bounding_box']['size'][0], node['bounding_box']['size'][2]
+                node_radius = max(h,w)/2.
+            
+            prev_cx[node['id']], prev_cy[node['id']] = curr_cx, curr_cy
+            
+            if 'radius' not in args_shape:
+                radius = 0.2 * node_radius
+                args_shape['radius'] = radius
+
+            dist_c = 0.8 * node_radius
+
+            cx, cy = curr_cx + dist_c * dchange[0], curr_cy + dist_c * dchange[1]
+            centers[0].append(cx)
+            centers[1].append(cy)
+
+            if args_shape is not None:
+                arrows.append(
+                        Circle((cx,cy), **args_shape)
+                              )
+        return arrows, centers
+
+
+
+
+
+def add_arrows(nodes, ax, points=None, args_shape=None):
+    arrows = []
+    arrows_class, center = add_arrow(nodes, args_shape)
+    arrows += arrows_class
+    if points is not None:
+        ax.scatter(center[0], center[1], **points)
+    if args_shape is not None and len(arrows) > 0:
+        ax.add_patch(arrows[0])
+        collection = PatchCollection(arrows, match_original=True)
+        ax.add_collection(collection)
+
+
+def plot_graph_2d_v2(graph, char_id, visible_ids, action_ids, goal_ids, display_furniture=True):
+
+    
+    id2node = {node['id']: node for node in graph['nodes']}
+    goals = [node for node in graph['nodes'] if node['id'] in goal_ids]
+    container_surf = dict_info['objects_inside'] + dict_info['objects_surface']
+    container_and_surface = [node for node in graph['nodes'] if node['class_name'] in container_surf]
+
+    #grabbed_obj = [node for node in graph['nodes'] if node['class_name'] in dict_info['objects_grab']]
+    rooms = [node for node in graph['nodes'] if 'Rooms' == node['category']]
+
+
+    # containers and surfaces
+    visible_nodes = [node for node in graph['nodes'] if node['id'] in visible_ids and node['category'] != 'Rooms']
+    action_nodes = [node for node in graph['nodes'] if node['id'] in action_ids and node['category'] != 'Rooms']
+    
+    visible_nodes_object = [node for node in visible_nodes if node['class_name'] not in container_surf]
+    visible_nodes_container = [node for node in visible_nodes if node['class_name'] in container_surf]
+
+    # Character
+    char_nodes = [id2node[ch_id] for ch_id in char_id]
+    plt.close('all');
+    fig = plt.figure(figsize=(10, 10))
+    ax = plt.axes()
+    add_boxes(rooms, ax, points=None, args_shape={'alpha': 0.1})
+
+    if display_furniture:
+        add_boxes(container_and_surface, ax, points=None, args_shape={'fill': False,
+                                                                            'edgecolor': 'blue', 'alpha': 0.3})
+#    add_boxes([char_node], ax, points=None, rect={'facecolor': 'yellow', 'edgecolor': 'yellow', 'alpha': 0.7})
+    
+    colors = ['blue', 'magenta']
+    for char_it, char_node in enumerate(char_nodes):
+        add_circles([char_node], ax, points=None, args_shape={'facecolor': colors[char_it], 'edgecolor': colors[char_it], 'alpha': 0.7, 'radius': 0.5})
+        add_arrows([char_node], ax, points=None, args_shape={'facecolor': 'white', 'edgecolor': 'white', 'alpha': 1.0, 'radius': 0.1, 'node_radius': 0.5})
+    
+    visible_nodes_nochar = [node for node in visible_nodes_object if node['class_name'] != 'character']
+    for node in visible_nodes_nochar:
+        if node['bounding_box'] == None:
+            print(node)
+
+    if len(visible_nodes_nochar) > 0:
+        add_boxes(visible_nodes_nochar, ax, args_shape={'fill': False,
+                                                        'edgecolor': 'blue', 'alpha': 1.0})
+    if len(visible_nodes_container) > 0:
+        add_boxes(visible_nodes_container, ax, points=None, args_shape={'fill': False,
+            'edgecolor': 'blue', 'alpha': 0.6})
+    
+    add_boxes(goals, ax, args_shape={'fill': False, 'edgecolor': 'orange', 'alpha': 1.0, 'linewidth': 1.2})
+    add_boxes(action_nodes, ax, points=None, args_shape={'fill': False, 'edgecolor': 'red', 'alpha': 1.0, 'linewidth': 1.2})
+
+
+    bad_classes = ['character']
+
+    ax.set_aspect('equal')
+    bx, by = get_bounds([room['bounding_box'] for room in rooms])
+
+    maxsize = max(bx[1] - bx[0], by[1] - by[0])
+    gapx = (maxsize - (bx[1] - bx[0])) / 2.
+    gapy = (maxsize - (by[1] - by[0])) / 2.
+
+    ax.set_xlim(bx[0]-gapx, bx[1]+gapx)
+    ax.set_ylim(by[0]-gapy, by[1]+gapy)
+    ax.apply_aspect()
+    return fig
 
 def plot_graph_2d(graph, char_id, visible_ids, action_ids, goal_ids):
 
@@ -201,11 +378,15 @@ def plot_graph_2d(graph, char_id, visible_ids, action_ids, goal_ids):
 
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes()
-    add_boxes(rooms, ax, points=None, rect={'alpha': 0.1})
-    add_boxes(container_and_surface, ax, points=None, rect={'fill': False,
+    add_boxes(rooms, ax, points=None, args_shape={'alpha': 0.1})
+    add_boxes(container_and_surface, ax, points=None, args_shape={'fill': False,
                                                                         'edgecolor': 'blue', 'alpha': 0.3})
-    add_boxes([char_node], ax, points=None, rect={'facecolor': 'yellow', 'edgecolor': 'yellow', 'alpha': 0.7})
-    add_boxes(visible_nodes, ax, points={'s': 2.0, 'alpha': 1.0}, rect={'fill': False,
+#    add_boxes([char_node], ax, points=None, rect={'facecolor': 'yellow', 'edgecolor': 'yellow', 'alpha': 0.7})
+
+    add_circles([char_node], ax, points=None, args_shape={'facecolor': 'yellow', 'edgecolor': 'yellow', 'alpha': 0.7})
+    add_arrows([char_node], ax, points=None, args_shape={'facecolor': 'black', 'edgecolor': 'black', 'alpha': 0.7})
+    
+    add_boxes(visible_nodes, ax, points={'s': 2.0, 'alpha': 1.0}, args_shape={'fill': False,
                                                                          'edgecolor': 'green', 'alpha': 1.0})
     add_boxes(goals, ax, points={'s':  100.0, 'alpha': 1.0, 'edgecolors': 'orange', 'facecolors': 'none', 'linewidth': 3.0})
     add_boxes(action_nodes, ax, points={'s': 3.0, 'alpha': 1.0, 'c': 'red'})
@@ -478,8 +659,6 @@ def plot_single(input_path, out_file, object_classes_remark=[]):
         print(input_path)
         ctt = json.load(f)
         print(ctt['time'])
-
-        return None, None
     for json_file in json_files:
         with open(json_file, 'r') as f:
             graph = json.load(f)
@@ -520,7 +699,8 @@ if __name__ == '__main__':
     # plot.render()
     # pdb.set_trace()
     # path = '../record_graph/testmeet/task_0/time.09.21.2020-10.35.48/'
-    with open('../data_input/test_env_set_help_20_neurips.pik', 'rb') as f:
+    data_input_file = '../data_input/test_env_set_help_20_neurips.pik'
+    with open(data_input_file, 'rb') as f:
         file_inp = pkl.load(f)
 
     task_id2class_names = {}
@@ -530,14 +710,15 @@ if __name__ == '__main__':
             if cont > 0 and '1' not in pred:
                 task_id2class_names[i].append(pred.split('_')[1])
 
-    files_inp = glob.glob('../record_graph/collectionv0/*/*')
+    files_inp = glob.glob('../record_graph/test/*/*')
+#    print(len(files_inp))
     for file_name in files_inp:
-        if 'time' in file_name:
-            task_id = [int(x) for x in file_name.split('/')[-2].split('_') if x.isdigit()][0]
-        else:
-            task_id = [int(x) for x in file_name.split('/')[-1].split('_') if x.isdigit()][0]
+        task_id = re.findall(r"task_+[0-9][0-9]?", file_name)
+        task_id = (int)(task_id[0].split('_')[-1])
         input_path = file_name
-        vid_out = input_path.replace('../record_graph', '../plots/')
+        vid_out = input_path.replace('../record_graph', '../plots')
+#        vid_out = input_path
+        print(vid_out)
         name, steps = plot_single(input_path, vid_out, object_classes_remark=task_id2class_names[task_id])
         print(name, steps)
     
