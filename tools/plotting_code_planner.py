@@ -564,8 +564,8 @@ class Plotter:
     def __init__(self, experiment_name='test', root_dir=None):
         self.experiment_name = experiment_name
         if root_dir is None:
-            self.root_path = '/data/vision/torralba/frames/data_acquisition/' \
-                             'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch'
+            print("Root path is missing. Please set root_dir")
+            raise 
         else:
             self.root_path = root_dir
         self.dir_name = '{}/plots/{}'.format(self.root_path, self.experiment_name)
@@ -692,13 +692,6 @@ def plot_single(input_path, out_file, object_classes_remark=[]):
     return out_file, num_steps
 
 if __name__ == '__main__':
-    # with open('trained_models//env.virtualhome/task.find-numproc.1-obstype.full-sim.unity/taskset.setup_table/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001debug/log.json', 'r') as f:
-    #     content = json.load(f)
-    # plot = Plotter()
-    # plot.add_episode(content)
-    # plot.render()
-    # pdb.set_trace()
-    # path = '../record_graph/testmeet/task_0/time.09.21.2020-10.35.48/'
     data_input_file = '../data_input/test_env_set_help_20_neurips.pik'
     with open(data_input_file, 'rb') as f:
         file_inp = pkl.load(f)

@@ -18,6 +18,9 @@ wget http://virtual-home.org/release/simulator/last_release/linux_exec.zip
 unzip linux_exec.zip
 ```
 
+
+## Run the interface
+
 If you are running the demo locally, run:
 
 ```
@@ -31,13 +34,20 @@ export EXEC="virtualhome/simulation/linux_exec.v2.2.4.x86_64"
 python vh_demo.py --deployment remote --execname $EXEC
 ```
 
+Then open a browser, according to the url printed in the terminal
+
 ## Graph to GIF
-Put the json files to `vh_collect_data/graph_dir`, run
+
+The recorded data is stored in record_graph. You can plot the episodes by running:
+
 ```
 cd tools
-python plotting_code.py
+python plotting_code.py --taskname ../record_graph/debugtest/task_0/time.01.25.2022-16.09.32/
 ```
-The generated GIF can be found in `tools/video_name.gif`.
+
+Where you can replace taskname by a task file inside `record_graph`
+
+It will generate a video of the task you just generated in `tools/default_video.mp4`
 
 ## Cite
 If you find this code useful, please consider citing our work:

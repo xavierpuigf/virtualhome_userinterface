@@ -1,5 +1,6 @@
 import json
 import os
+import argparse
 import matplotlib
 matplotlib.use('agg')
 import plotly.graph_objects as go
@@ -13,6 +14,11 @@ from tqdm import tqdm
 import cv2
 import glob
 import subprocess
+
+
+parser = argparse.ArgumentParser(description='Plotting tool for data collection')
+parser.add_argument("--taskname", type=str, help="Name of the task you just collected, as stored in record_graph")
+parser.add_argument("--videoname", type=str, help="Name of the video you want to generate", default="default_video")
 
 dict_info = {
     "objects_inside": [
@@ -451,16 +457,9 @@ class Plotter:
         print("Done")
 
 if __name__ == '__main__':
-    # with open('trained_models//env.virtualhome/task.find-numproc.1-obstype.full-sim.unity/taskset.setup_table/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001debug/log.json', 'r') as f:
-    #     content = json.load(f)
-    # plot = Plotter()
-    # plot.add_episode(content)
-    # plot.render()
-    # pdb.set_trace()
-    # path = '../record_graph/testmeet/task_0/time.09.21.2020-10.35.48/'
-    path = '../record_graph/planner/'
+    args = parser.parse_args()
+    path = args.taskname
     
-    # path = '../record_graph/testmeet/task_0/time.09.21.2020-11.21.38/'
     init_graph_file = '{}/init_graph.json'.format(path)
     json_files = glob.glob('{}/file*.json'.format(path))
     
@@ -469,7 +468,6 @@ if __name__ == '__main__':
 
     id2nodeinit_graph = {node['id']: node for node in init_graph['graph']['nodes']}
 
-    print(json_files)
     plot = Plotter(root_dir='./html/')
     graph_list = []
     json_files = sorted(json_files, key=lambda name: int(name.split('file_')[-1].replace('.json', '')))
@@ -499,6 +497,6 @@ if __name__ == '__main__':
     content['visible_ids'] = [ids_curr,] * len(graph_list)
     content['action_ids'] = [ids_curr, ] * len(graph_list)
     content['goal_ids'] = [[], ] * len(graph_list)
-    content['video_name'] = 'test_planner'
+    content['video_name'] = args.videoname
     plot.add_episode(content)
     plot.render()
