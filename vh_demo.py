@@ -106,10 +106,14 @@ def convert_image(img_array):
     #return file_object
 
 def send_command(command):
-    global graph, id2classid, record_step_counter, time_start, last_completed, next_helper_action, curr_task
+    global graph, id2classid, id2node, record_step_counter, time_start, last_completed, next_helper_action, curr_task
     global task_index, current_goal, extra_agent, last_instr_main
     executed_instruction = False
+    
     info = {}
+    # TODO: make this more general
+    id2node = {node['id']: node for node in graph['nodes']}
+
 
     if task_index >= len(args.task_group):
         return [], {'all_done': True}
@@ -143,7 +147,7 @@ def send_command(command):
                 object_name, object_id = other_info[0]
             else:
                 object_name, object_id = None, None
-            script, message = vh_tools.can_perform_action(action, object_name, object_id, graph)
+            script, message = vh_tools.can_perform_action(action, object_name, object_id, graph, id2node=id2node, id2classid=id2classid)
             if script is not None:
                 executed_instruction = True
                 last_instr_main = script
@@ -159,10 +163,10 @@ def send_command(command):
                                 same_action = True
 
                         if not same_action:
-                            other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, 2)
+                            other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, 2, id2node=id2node, id2classid=id2classid)
 
                             script[0] = script[0] + '| <char1> {}'.format(command_other)
-        
+                print("ACTION", script)
                 comm.render_script(script, skip_animation=True, recording=False, image_synthesis=[])
                 
             else:
@@ -202,8 +206,7 @@ def send_command(command):
             last_completed[task_pred] = 0
             # total_completed[task_pred] = 0
 
-    # TODO: make this more general
-    id2node = {node['id']: node for node in g['nodes']}
+    
     first_pred = list(curr_task['task_goal'][0].keys())[0]
     obj_id_pred = int(first_pred.split('_')[-1])
     visible_ids = [v[0] for v in other_info['visible_objects']]
@@ -309,12 +312,12 @@ def reset(scene, init_graph=None, init_room=[]):
     global extra_agent
     global graph
     global extra_agent_list
-    global id2classid, class2numobj
+    global id2classid, class2numobj, id2node
     global last_instr_main
 
     class2numobj = {}
     id2classid = {}
-    
+    id2node = {}
 
     record_step_counter = 0
     task_index = task_index + 1

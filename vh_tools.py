@@ -120,6 +120,7 @@ dict_objects_actions = {
     "objects_inside": [
         "bathroomcabinet", 
         "kitchencabinets", 
+        "kitchencabinet",
         "cabinet", 
         "fridge", 
         "oven", 
@@ -237,17 +238,17 @@ def parse(action_str):
         object_name = params[0][0]
     return action_string, object_name, object_id
 
-def can_perform_action(action, object_name, object_id, current_graph, agent_id=1):
+def can_perform_action(action, object_name, object_id, current_graph, id2node, id2classid, agent_id=1):
     graph_helper = None
     graph = current_graph
     obj2_str = ''
     obj1_str = ''
     o1_id = object_id
     id2node = {node['id']: node for node in graph['nodes']}
-    grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
+    grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLDS_LH']]
     close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1_id and edge['relation_type'] == 'CLOSE']) > 0
     if action == 'grab':
-        if len(grabbed_objects) > 0:
+        if len(grabbed_objects) > 1:
             return None, {'msg': 'You cannot grab an already grabbed object'}
     if action.startswith('walk'):
         if o1_id in grabbed_objects:
@@ -268,7 +269,12 @@ def can_perform_action(action, object_name, object_id, current_graph, agent_id=1
         if len(grabbed_objects) == 0:
             return None, {'msg': 'You did not grab any object'}
         else:
-            o2_id = grabbed_objects[0]
+            index_obj = action.split()[1]
+            
+            obj_names_grabbed = [(index_obj, '{}.{}'.format(id2node[index_obj]['class_name'], id2classid[index_obj])) for index_obj in grabbed_objects]
+            o2_id = [objname[0] for objname in obj_names_grabbed if index_obj == objname[1]][0]
+
+            # o2_id = grabbed_objects[0]
             if o2_id == o1_id:
                 return None, {'msg': 'cannot put an object into itself'}
             o2 = id2node[o2_id]['class_name']
@@ -292,8 +298,9 @@ def can_perform_action(action, object_name, object_id, current_graph, agent_id=1
             elif 'SURFACES' in id2node[o1_id]['properties']:
                 action = 'putback'
 
-
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
+
+    print(action_str)
     return action_str, {'msg': "Success"}
 
 
@@ -326,8 +333,8 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
     classes_switch = ['faucet', 'toaster', 'microwave', 'stove', 'lightswitch', 'television', 'tv']
     
-    ids = sorted(ids, key=lambda idi: (0 if idi in objects_interact else 0, id2node[idi]['class_name'], idi))
-
+    ids = sorted(ids, key=lambda idi: (0 if idi in objects_interact else 1, id2node[idi]['class_name'], idi))
+    print(ids)
     # Containers
     containers = {}
     rooms_obj = {}
@@ -375,7 +382,8 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
             if len(objects_grabbed) > 0:
                 if node['class_name'] in classes_surface or node['class_name'] in classes_open and 'OPEN' in node['states']:
-                    actions.append('put object')
+                    for ind in range(len(objects_grabbed)):
+                        actions.append('put {}.{}'.format(id2node[objects_grabbed[ind]]['class_name'], str(id2classid[int(objects_grabbed[ind])])))
 
 
         if node['class_name'] in classes_grab:
@@ -405,16 +413,18 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
         if len(objects_grabbed_second) == 0:
             grabbed_second = []
         else:
-            grabbed_second = [
-                    id2node[objects_grabbed_second[0]]['class_name'], 
-                    str(objects_grabbed_second[0]), 
-                    id2classid[objects_grabbed_second[0]]
-                    ]
-    grabbed_first = [] if len(objects_grabbed) == 0 else [id2node[objects_grabbed[0]]['class_name'], str(objects_grabbed[0]), str(id2classid[int(objects_grabbed[0])])]
+            grabbed_second = [ [
+                    id2node[objects_grabbed_second[ind]]['class_name'], 
+                    str(objects_grabbed_second[ind]), 
+                    id2classid[objects_grabbed_second[ind]]] for ind in range(len(objects_grabbed_second))]
+    grabbed_first = [] if len(objects_grabbed) == 0 else [[id2node[objects_grabbed[ind]]['class_name'], str(objects_grabbed[ind]), str(id2classid[int(objects_grabbed[ind])])] for ind in range(len(objects_grabbed))]
     print('====')
     print("SECOND GRABBED OBJECTS", grabbed_second)
     print(grabbed_first)
     print('___')
+    #print("INTERACT")
+    #print(['{}.{}.{}'.format(id2node[obj]['class_name'], obj, str(id2classid[obj])) for obj in objects_interact])
+
     objects_relations = {
             'grabbed_object': grabbed_first,
             'grabbed_object_second': grabbed_second,
