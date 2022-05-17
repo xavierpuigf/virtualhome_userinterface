@@ -179,7 +179,7 @@ def send_command(command):
 
     if extra_agent is not None:
         goal_spec = {}
-        next_helper_action = get_helper_action(graph, goal_spec, last_instr_main)
+        next_helper_action = get_helper_action(graph, goal_spec, last_instr_main, record_step_counter)
         print("GETTING ACTION")
 
 
@@ -332,6 +332,7 @@ def reset(scene, init_graph=None, init_room=[]):
         file_content = pkl.load(f)
     curr_task = file_content[temp_task_id]
     add_goal_class(curr_task)
+    print(temp_task_id)
     scene = curr_task['env_id']
     init_graph = curr_task['init_graph']
     init_room = curr_task['init_rooms']
@@ -344,7 +345,6 @@ def reset(scene, init_graph=None, init_room=[]):
         s, m = comm.expand_scene(init_graph)
         print("EXPNAD", m)
     
-
     comm.add_character('Chars/Female1', initial_room=init_room[0])
     extra_agent_name = extra_agent_list[task_index_shuffle[task_index]]
     if extra_agent_name != "none":
@@ -374,11 +374,10 @@ def reset(scene, init_graph=None, init_room=[]):
         gt_graph = g
         #print([node for node in gt_graph['nodes'] if node['id']  in [1,2]])
         task_goal = None
-        ipdb.set_trace()
-        container_id = list(gt_goal.values())[0]["container_ids"][0]
+        container_id = int(list(curr_task['task_goal'][0].keys())[0].split('_')[-1])
 
         observed_graph = vh_tools.get_visible_graph(g, agent_id=2, full_obs=True)
-        extra_agent.reset(observed_graph, container_id, gt_graph, task_goal)
+        extra_agent.reset(observed_graph, gt_graph, container_id, task_goal)
         
     if extra_agent_name  == "random_goal":
         print("RANDOM")
@@ -463,13 +462,13 @@ def reset(scene, init_graph=None, init_room=[]):
     return images, {'image_top': get_top_image(), 'all_done': all_done}
 
 
-def get_helper_action(gt_graph, goal_spec, previous_main_action):
+def get_helper_action(gt_graph, goal_spec, previous_main_action, num_steps):
     curr_obs = vh_tools.get_visible_graph(gt_graph, agent_id=2, full_obs=True)
     print('({})'.format(extra_agent.agent_type), '--')
 
     if extra_agent.agent_type == 'MCTS' or extra_agent.agent_type == 'NOPA':
         
-        command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action)[0]
+        command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action, num_steps)[0]
     
     else:
         # The ids iwth which we can do actions
