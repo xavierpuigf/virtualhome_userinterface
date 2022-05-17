@@ -64,6 +64,7 @@ id2classid = {}
 
 task_index = -1 # for indexing task_id in task_group
 task_index_shuffle = []
+last_instr_main = None
 
 current_goal = {}
 
@@ -81,6 +82,16 @@ parser.add_argument("--extra_agent", type=str, nargs="+", default=['none']) # no
 
 
 args = parser.parse_args()
+def get_pred_name(pred_name, id2node):
+    sp = pred_name.split('_')
+    return '_'.join([sp[0], sp[1], id2node[int(sp[2])]])
+
+
+def add_goal_class(current_task):
+    task_goal = current_task['task_goal'][0]
+    id2class = {node['id']: node['class_name'] for node in current_task['init_graph']['nodes']}
+    goal_class = {get_pred_name(pred, id2class): count for pred, count in task_goal.items()}
+    current_task['goal_class'] = goal_class
 
 def convert_image(img_array):
     #cv2.imwrite('current.png', img_array.astype('uint8'))
@@ -96,7 +107,7 @@ def convert_image(img_array):
 
 def send_command(command):
     global graph, id2classid, record_step_counter, time_start, last_completed, next_helper_action, curr_task
-    global task_index, current_goal, extra_agent
+    global task_index, current_goal, extra_agent, last_instr_main
     executed_instruction = False
     info = {}
 
@@ -135,6 +146,7 @@ def send_command(command):
             script, message = vh_tools.can_perform_action(action, object_name, object_id, graph)
             if script is not None:
                 executed_instruction = True
+                last_instr_main = script
                 script = ['<char0> {}'.format(script)]
                 
                 if extra_agent is not None:
@@ -166,7 +178,8 @@ def send_command(command):
     # For now always
 
     if extra_agent is not None:
-        next_helper_action = get_helper_action(graph, goal_spec)
+        goal_spec = {}
+        next_helper_action = get_helper_action(graph, goal_spec, last_instr_main)
         print("GETTING ACTION")
 
 
@@ -184,6 +197,7 @@ def send_command(command):
     other_info['task_name'] = curr_task['task_name']
     # Task preds
     if len(last_completed) == 0:
+        #ipdb.set_trace()
         for task_pred, count in curr_task['goal_class'].items():
             last_completed[task_pred] = 0
             # total_completed[task_pred] = 0
@@ -296,6 +310,7 @@ def reset(scene, init_graph=None, init_room=[]):
     global graph
     global extra_agent_list
     global id2classid, class2numobj
+    global last_instr_main
 
     class2numobj = {}
     id2classid = {}
@@ -312,17 +327,18 @@ def reset(scene, init_graph=None, init_room=[]):
     graph_save_dir = 'record_graph/{}/task_{}/time.{}'.format(args.exp_name, temp_task_id, time_str)
 
     #### For debug  ####
-    pkl_file = 'data_input/test_env_set_help_20_neurips.pik'
+    pkl_file = f"/data/vision/torralba/frames/data_acquisition/SyntheticStories/online_wah/agent_preferences/dataset/structured_agent/test_env_task_set_60_full_task.all.pik"
     with open(pkl_file, 'rb') as f:
         file_content = pkl.load(f)
     curr_task = file_content[temp_task_id]
+    add_goal_class(curr_task)
     scene = curr_task['env_id']
     init_graph = curr_task['init_graph']
     init_room = curr_task['init_rooms']
     #### Debug code finished.
 
     last_completed = {}
-
+    last_instr_main = None
     comm.reset(scene)
     if init_graph is not None:
         s, m = comm.expand_scene(init_graph)
@@ -332,6 +348,8 @@ def reset(scene, init_graph=None, init_room=[]):
     comm.add_character('Chars/Female1', initial_room=init_room[0])
     extra_agent_name = extra_agent_list[task_index_shuffle[task_index]]
     if extra_agent_name != "none":
+        
+        sys.path.append('../../')
         import agents
         comm.add_character('Chars/Male1', initial_room=init_room[1])
 
@@ -342,27 +360,26 @@ def reset(scene, init_graph=None, init_room=[]):
     #image_top = images[0]
     
 
-    if extra_agent_name == "planner":
-        extra_agent = agents.MCTS_agent(agent_id=2,
+    if extra_agent_name == "nopa":
+        extra_agent = agents.NOPA_agent(agent_id=2,
                                        char_index=1,
                                        max_episode_length=5,
                                        num_simulation=100,
                                        max_rollout_steps=5,
                                        c_init=0.1,
                                        c_base=1000000,
-                                       num_samples=1,
+                                       num_samples=20,
                                        num_processes=1,
                                        seed=temp_task_id)
         gt_graph = g
         #print([node for node in gt_graph['nodes'] if node['id']  in [1,2]])
         task_goal = None
-        observed_graph = vh_tools.get_visible_graph(g, agent_id=2)
-        extra_agent.reset(observed_graph, gt_graph, task_goal)
-        goal_spec = vh_tools.get_predicted_goal(gt_graph, temp_task_id) 
-        # print("GOALS", temp_task_id)
-        # print(curr_task['task_goal'][0])
-        # print(goal_spec)
-    
+        ipdb.set_trace()
+        container_id = list(gt_goal.values())[0]["container_ids"][0]
+
+        observed_graph = vh_tools.get_visible_graph(g, agent_id=2, full_obs=True)
+        extra_agent.reset(observed_graph, container_id, gt_graph, task_goal)
+        
     if extra_agent_name  == "random_goal":
         print("RANDOM")
         extra_agent = agents.MCTS_agent(agent_id=2,
@@ -427,12 +444,12 @@ def reset(scene, init_graph=None, init_room=[]):
 
     if not os.path.exists(graph_save_dir):
         os.makedirs(graph_save_dir)
+    
     with open(os.path.join(graph_save_dir, 'init_graph.json'), 'w') as f:
         file_info = {
             'graph': graph,
             'instruction': "START",
             'extra_agent': str(extra_agent_name),
-            'goal_spec': goal_spec,
         }
         json.dump(file_info, f)
 
@@ -446,11 +463,13 @@ def reset(scene, init_graph=None, init_room=[]):
     return images, {'image_top': get_top_image(), 'all_done': all_done}
 
 
-def get_helper_action(gt_graph, goal_spec):
-    curr_obs = vh_tools.get_visible_graph(gt_graph, agent_id=2)
+def get_helper_action(gt_graph, goal_spec, previous_main_action):
+    curr_obs = vh_tools.get_visible_graph(gt_graph, agent_id=2, full_obs=True)
     print('({})'.format(extra_agent.agent_type), '--')
-    if extra_agent.agent_type == 'MCTS':
-        command_other = extra_agent.get_action(curr_obs, goal_spec)[0]
+
+    if extra_agent.agent_type == 'MCTS' or extra_agent.agent_type == 'NOPA':
+        
+        command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action)[0]
     
     else:
         # The ids iwth which we can do actions
@@ -462,7 +481,7 @@ def get_helper_action(gt_graph, goal_spec):
             reward = 0
             count = ct
             new_goal_spec[pred] = [count, required, reward]
-        action_space = [node['id'] for node in curr_obs['nodes']] 
+        action_space = [node['id'] for node in curr_obs['nodes']]
         action, info = extra_agent.get_action(curr_obs, new_goal_spec, action_space_ids=action_space, full_graph=None)
         command_other = action
         print('------------')
@@ -483,7 +502,7 @@ def refresh_image(current_graph, curr_goal_id=[]):
     # global prev_images
     print("GOAL", curr_goal_id)
     # ipdb.set_trace()
-    visible_ids = vh_tools.get_objects_visible(None, current_graph, ignore_bad_class=True)
+    visible_ids = vh_tools.get_objects_visible(None, current_graph, ignore_bad_class=True, full_obs=True)
     char_ids = [node['id'] for node in current_graph['nodes'] if node['id'] in visible_ids and node['class_name'] == 'character']
     curr_goal_id = [cgid for cgid in curr_goal_id if cgid in visible_ids]
     fig = plot_graph_2d(current_graph, visible_ids=visible_ids, action_ids=[], char_id=char_ids, goal_ids=curr_goal_id, display_furniture=False)
@@ -589,9 +608,10 @@ if __name__ == '__main__':
     # run!
     # global graph_save_dir
     task_index_shuffle = list(range(len(args.task_group)))
+    print(task_index_shuffle)
     code2agent = {
             'none': 'none',
-            'B1': 'planner',
+            'B1': 'nopa',
             'B2': 'random_goal',
             'B3': 'rl_mcts',
     }
@@ -600,6 +620,7 @@ if __name__ == '__main__':
     random.shuffle(task_index_shuffle)
 
     #random.Random(args.exp_name).shuffle(task_index_shuffle)
+    print(args.task_group)
 
     now = datetime.now()
     date_time = now.strftime("%m.%d.%Y-%H.%M.%S")

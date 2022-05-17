@@ -159,8 +159,11 @@ ignore_class = ['window', 'door', 'doorjamb', 'floor', 'wall',
 
 
 
-def get_visible_graph(graph, agent_id=1):
-    ids_visible = get_objects_visible(None, graph, agent_id)
+def get_visible_graph(graph, agent_id=1, full_obs=False):
+    if full_obs:
+        ids_visible = [node['id'] for node in graph['nodes'] if node['class_name'] not in ignore_class]
+    else:
+        ids_visible = get_objects_visible(None, graph, agent_id)
     curr_g = {
         'nodes': [node for node in graph['nodes'] if node['id'] in ids_visible],
         'edges': [edge for edge in graph['edges'] if edge['from_id'] in ids_visible and edge['to_id'] in ids_visible]
@@ -169,7 +172,13 @@ def get_visible_graph(graph, agent_id=1):
     return curr_g
 
 
-def get_objects_visible(ids, graph, agent_id=1, ignore_bad_class=False):
+def get_objects_visible(ids, graph, agent_id=1, ignore_bad_class=False, full_obs=False):
+    if full_obs:
+        id2node = {node['id']: node for node in graph['nodes']}
+        visible_ids = [node['id'] for node in graph['nodes']]
+        if ignore_bad_class:
+            visible_ids = [id_node for id_node in visible_ids if id2node[id_node]['class_name'].lower() not in get_classes_ignore()]
+        return visible_ids
     # Return only the objects that are inside the room and not somewhere closed
     if ids is None:
         curr_room = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] == 'INSIDE'][0]
@@ -296,7 +305,8 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
 
     if ids_select is None:
-        ids = get_objects_visible(None, graph, agent_id=1)
+        ids = get_objects_visible(None, graph, agent_id=1, full_obs=True)
+        objects_interact = get_objects_visible(None, graph, agent_id=1)
         # ids = set(objects_room)
     else:
         ids = ids_select
@@ -311,17 +321,19 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
     classes_switch = ['faucet', 'toaster', 'microwave', 'stove', 'lightswitch', 'television', 'tv']
     
-    ids = sorted(ids, key=lambda idi: (id2node[idi]['class_name'], idi))
+    ids = sorted(ids, key=lambda idi: (0 if idi in objects_interact else 0, id2node[idi]['class_name'], idi))
 
     # Containers
     containers = {}
+    rooms_obj = {}
     for edge in graph['edges']:
         if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['class_name'] in classes_open:
             containers[edge['from_id']] = edge['to_id']
         if edge['relation_type'] == 'ON' and id2node[edge['to_id']]['class_name'] in classes_surface:
             if edge['from_id'] not in containers:
                 containers[edge['from_id']] = edge['to_id']
-            
+        if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['category'] == 'Rooms':
+            rooms_obj[edge['from_id']] = edge['to_id']
 
     for id_obj in ids:
         if id_obj in objects_grabbed or id_obj in objects_grabbed_second:
@@ -371,12 +383,14 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
         is_close = '1' if id_obj in objects_close else '0'
         container = -1
-
+        room_obj = rooms_obj[id_obj]
+        # print(rooms_obj)
+        room_name = id2node[room_obj]['class_name']
         # to what container it belongs
         if id_obj in containers:
             container = containers[id_obj]
 
-        object_curr = [id_obj, node['class_name'], id2classid[id_obj], obj_type, is_close, is_open, container]
+        object_curr = [id_obj, node['class_name'], id2classid[id_obj], obj_type, is_close, is_open, container, room_obj, room_name]
         objects_and_actions.append((object_curr, actions))
     
     
@@ -400,6 +414,7 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
             'grabbed_object': grabbed_first,
             'grabbed_object_second': grabbed_second,
             'close_objects': objects_close,
+            'interactable_objects': objects_interact,
             'visible_objects': visible_objects,
             'inside_objects': [current_room],
             'current_room': id2node[current_room]['class_name']
