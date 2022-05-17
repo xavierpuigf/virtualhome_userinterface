@@ -337,8 +337,8 @@ def plot_graph_2d_v2(graph, char_id, visible_ids, action_ids, goal_ids, display_
         add_boxes(visible_nodes_container, ax, points=None, args_shape={'fill': False,
             'edgecolor': 'blue', 'alpha': 0.6})
     
-    add_boxes(goals, ax, args_shape={'fill': False, 'edgecolor': 'orange', 'alpha': 1.0, 'linewidth': 1.2})
-    add_boxes(action_nodes, ax, points=None, args_shape={'fill': False, 'edgecolor': 'red', 'alpha': 1.0, 'linewidth': 1.2})
+    add_boxes(goals, ax, args_shape={'fill': False, 'edgecolor': 'orange', 'alpha': 1.0, 'linewidth': 2.0})
+    add_boxes(action_nodes, ax, points=None, args_shape={'fill': False, 'edgecolor': 'red', 'alpha': 1.0, 'linewidth': 2.7})
 
 
     bad_classes = ['character']

@@ -107,7 +107,7 @@ def convert_image(img_array):
 
 def send_command(command):
     global graph, id2classid, id2node, record_step_counter, time_start, last_completed, next_helper_action, curr_task
-    global task_index, current_goal, extra_agent, last_instr_main
+    global task_index, current_goal, extra_agent, last_instr_main, id2node
     executed_instruction = False
     
     info = {}
@@ -326,6 +326,7 @@ def reset(scene, init_graph=None, init_room=[]):
         return None, {'all_done': True}
         print('All tasks in task_group {} are finished.'.format(args.task_group))
         task_index = task_index - 1
+    #print(task_index)
     temp_task_id = int(args.task_group[task_index_shuffle[task_index]])
     graph_save_dir = 'record_graph/{}/task_{}/time.{}'.format(args.exp_name, temp_task_id, time_str)
 
@@ -333,6 +334,7 @@ def reset(scene, init_graph=None, init_room=[]):
     pkl_file = f"/data/vision/torralba/frames/data_acquisition/SyntheticStories/online_wah/agent_preferences/dataset/structured_agent/test_env_task_set_60_full_task.all.pik"
     with open(pkl_file, 'rb') as f:
         file_content = pkl.load(f)
+    print(len(file_content), temp_task_id)
     curr_task = file_content[temp_task_id]
     add_goal_class(curr_task)
     print(temp_task_id)
@@ -557,7 +559,7 @@ def get_mask_id():
     data = request.get_json(silent=False)
     obj_id = data['obj_id']
 
-    visible_ids = vh_tools.get_objects_visible(None, graph, ignore_bad_class=True)
+    visible_ids = vh_tools.get_objects_visible(None, graph, ignore_bad_class=True, full_obs=True)
     char_ids = [node['id'] for node in graph['nodes'] if node['id'] in visible_ids and node['class_name'] == 'character']
 
     fig = plot_graph_2d(graph, visible_ids=visible_ids, action_ids=[obj_id], char_id=char_ids, goal_ids=[], display_furniture=False)
@@ -663,7 +665,8 @@ if __name__ == '__main__':
         images, _ = reset(0)
         s, graph = comm.environment_graph()
     else:
-        pkl_file = 'data_input/test_env_set_help_20_neurips.pik'
+        pkl_file = f"/data/vision/torralba/frames/data_acquisition/SyntheticStories/online_wah/agent_preferences/dataset/structured_agent/test_env_task_set_60_full_task.all.pik"
+    
         with open(pkl_file, 'rb') as f:
             file_content = pkl.load(f)
 

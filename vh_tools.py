@@ -131,7 +131,6 @@ dict_objects_actions = {
     "objects_surface": [
         "bench",
          "cabinet",
-         "chair",
          "coffeetable",
          "desk",
          "kitchencounter",
@@ -139,23 +138,35 @@ dict_objects_actions = {
          "nightstand",
          "sofa"],
 
-    "objects_grab": [
-         "apple",
-         "book",
-         "coffeepot",
-         "cupcake",
-         "cutleryfork",
-         "juice",
-         "pancake",
-         "plate",
-         "poundcake",
-         "pudding",
-         "remotecontrol",
-         "waterglass",
-         "whippedcream",
-         "wine",
-         "wineglass"
-     ]
+    "objects_grab": list(set([
+        "apple",
+        "book",
+        "coffeepot",
+        "cupcake",
+        "cutleryfork",
+        "juice",
+        "pancake",
+        "plate",
+        "poundcake",
+        "pudding",
+        "remotecontrol",
+        "waterglass",
+        "whippedcream",
+        "wine",
+        "wineglass",
+        "condimentshaker",
+        "condimentbottle",
+        "remotecontrol",
+        "plate",
+        "pudding",
+        "wineglass",
+        "waterglass",
+        "cutleryfork",
+        "cupcake",
+        "salmon",
+        "apple",
+        "chips"
+    ]))
 }
 ignore_class = ['window', 'door', 'doorjamb', 'floor', 'wall', 
             'ceiling', 'ceilinglamp', 'hanger', 'closetdrawer', 'wallpictureframe', 
@@ -249,7 +260,15 @@ def can_perform_action(action, object_name, object_id, current_graph, id2node, i
     close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1_id and edge['relation_type'] == 'CLOSE']) > 0
     if action == 'grab':
         if len(grabbed_objects) > 1:
-            return None, {'msg': 'You cannot grab an already grabbed object'}
+            return None, {'msg': 'You cannot grab more objects, since your hands are busy'}
+    if action == 'open':
+        if len(grabbed_objects) == 2:
+            return None, {'msg': 'You cannot open an object, since your hands are busy'}
+
+    if action == 'close':
+        if len(grabbed_objects) == 2:
+            return None, {'msg': 'You cannot close an object, since your hands are busy'}
+
     if action.startswith('walk'):
         if o1_id in grabbed_objects:
             return None, {'msg': 'You cannot walk towards an object you grabbed'}
@@ -258,11 +277,11 @@ def can_perform_action(action, object_name, object_id, current_graph, id2node, i
         return None, {'msg': 'You cannot walk towards yourself'}
     
     if (action in ['grab', 'open', 'close']) and not close_edge:
-        return None, {'msg': 'You are not close enought to {}'.format(object_name)}
+        return None, {'msg': 'You are not close enough to {}'.format(object_name)}
 
-    if action == 'close':
+    if action.startswith('close'):
         if 'CLOSED' in id2node[o1_id]['states'] or 'OPEN' not in id2node[o1_id]['states']:
-            message = 'You cannot close {}'.format(object_name)
+            message = 'You cannot close {}, it is already closed'.format(object_name)
             return None, {'msg': message}
 
     if 'put' in action:
@@ -396,7 +415,10 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
         is_close = '1' if id_obj in objects_close else '0'
         container = -1
-        room_obj = rooms_obj[id_obj]
+        if id_obj in rooms_obj:
+            room_obj = rooms_obj[id_obj]
+        else:
+            room_obj = rooms_obj[containers[id_obj]]
         # print(rooms_obj)
         room_name = id2node[room_obj]['class_name']
         # to what container it belongs
