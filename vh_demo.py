@@ -404,6 +404,25 @@ def reset(scene, init_graph=None, init_room=[]):
         observed_graph = vh_tools.get_visible_graph(g, agent_id=2, full_obs=True)
         extra_agent.reset(observed_graph, gt_graph, container_id, task_goal)
 
+    if extra_agent_name == "hp_random":
+        extra_agent = agents.HP_agent(agent_id=2,
+                                       char_index=1,
+                                       max_episode_length=5,
+                                       num_simulation=100,
+                                       max_rollout_steps=5,
+                                       c_init=0.1,
+                                       c_base=1000000,
+                                       num_samples=20,
+                                       num_processes=1,
+                                       seed=temp_task_id)
+        gt_graph = g
+        #print([node for node in gt_graph['nodes'] if node['id']  in [1,2]])
+        task_goal = None
+        container_id = int(list(curr_task['task_goal'][0].keys())[0].split('_')[-1])
+
+        observed_graph = vh_tools.get_visible_graph(g, agent_id=2, full_obs=True)
+        extra_agent.reset(observed_graph, gt_graph, container_id, task_goal)
+
     if extra_agent_name  == "random_goal":
         print("RANDOM")
         extra_agent = agents.MCTS_agent(agent_id=2,
@@ -491,7 +510,7 @@ def get_helper_action(gt_graph, goal_spec, previous_main_action, num_steps):
     curr_obs = vh_tools.get_visible_graph(gt_graph, agent_id=2, full_obs=True)
     print('({})'.format(extra_agent.agent_type), '--')
 
-    if extra_agent.agent_type == 'MCTS' or extra_agent.agent_type == 'NOPA' or extra_agent.agent_type == 'HP_GP':
+    if extra_agent.agent_type == 'MCTS' or extra_agent.agent_type == 'NOPA' or extra_agent.agent_type == 'HP_GP' or extra_agent.agent_type == 'HP_Random':
         command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action, num_steps)[0]
     
     else:
@@ -636,7 +655,7 @@ if __name__ == '__main__':
             'none': 'none',
             'B1': 'nopa',
             'B2': 'hp_gp',
-            'B3': 'rl_mcts',
+            'B3': 'hp_random',
     }
     extra_agent_list = [code2agent[name] for name in args.extra_agent]
     print(extra_agent_list)
