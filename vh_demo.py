@@ -111,13 +111,14 @@ def send_command(command):
     executed_instruction = False
     
     info = {}
+    s, g = comm.environment_graph()
+    graph = g
     # TODO: make this more general
     id2node = {node['id']: node for node in graph['nodes']}
 
 
     if task_index >= len(args.task_group):
         return [], {'all_done': True}
-
     if command['instruction'] == 'reset':
         # executed_instruction = True
         if 'data_form' in command:
@@ -125,6 +126,7 @@ def send_command(command):
                 f.write(json.dumps(command['data_form']))
 
         images, info = reset(command['scene_id'])
+        # ipdb.set_trace()
         if info['all_done']:
             return [], {'all_done': True}
 
@@ -193,6 +195,8 @@ def send_command(command):
     
     s, g = comm.environment_graph()
     graph = g
+
+    id2node = {node['id']: node for node in graph['nodes']}
     rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'].lower() == 'rooms']
     info.update({'rooms': rooms})
     
