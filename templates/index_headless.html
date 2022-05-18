@@ -233,7 +233,7 @@ function refreshInfo(result){
 		$("#second_agent_info").show();
 		if (grabbed_obj_second.length > 0){
 			var grabb_obj_str = ""
-			for (var it = 0; it < grabbed_obj.length; ++it){
+			for (var it = 0; it < grabbed_obj_second.length; ++it){
 				grabb_obj_str += " "+grabbed_obj_second[it][0] + "." + grabbed_obj_second[it][2];
 				
 			}
@@ -470,6 +470,8 @@ function addRoomButtons(rooms){
 		$('#visible_objects_grab').append(span_room+'<div class="buttoncontainer" style="min-height: 70px" id='+room_id+'></div>');
 		rooms_box.push(room_id)	
     }
+    var button_room = "<button class='btn btn-info' onclick='doWork(\"wait\")'>Wait</button>";
+	$('#button_rooms').append(button_room);
 }
 
 function resetScene(){

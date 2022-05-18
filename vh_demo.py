@@ -131,6 +131,7 @@ def send_command(command):
 
         # return images, info
     else:    
+        failed_script = False
         instr = command['instruction']
         if instr == 'refresh':
             image_top = 'include_top' in command
@@ -147,12 +148,20 @@ def send_command(command):
                 object_name, object_id = other_info[0]
             else:
                 object_name, object_id = None, None
-            script, message = vh_tools.can_perform_action(action, object_name, object_id, graph, id2node=id2node, id2classid=id2classid)
-            if script is not None:
+            if action == 'wait':
+                script = None
+            else:
+                script, message = vh_tools.can_perform_action(action, object_name, object_id, graph, id2node=id2node, id2classid=id2classid)
+                if script is None:
+                    failed_script = True
+
+            if not failed_script:
                 executed_instruction = True
                 prev_instr_main = last_instr_main
                 last_instr_main = script
-                script = ['<char0> {}'.format(script)]
+                
+                if script is not None:
+                    script = ['<char0> {}'.format(script)]
                 
                 if extra_agent is not None:
                     goal_spec = {}
@@ -168,10 +177,13 @@ def send_command(command):
                             other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, agent_id=2, id2node=id2node, id2classid=id2classid)
                             if 'walktowards' in command_other:
                                 command_other = command_other + ' :3:'
-                            script[0] = script[0] + '| <char1> {}'.format(command_other)
-                print("ACTION", script)
-                comm.render_script(script, skip_animation=True, recording=False, image_synthesis=[])
-                
+                            if script is None:
+                                script =  ['<char1> {}'.format(command_other)]
+                            else:
+                                script[0] = script[0] + '| <char1> {}'.format(command_other)
+                if script is not None:
+                    comm.render_script(script, skip_animation=True, recording=False, image_synthesis=[])
+                        
             else:
                 print(message, "ERROR")
                 info.update({'errormsg': message})
@@ -348,7 +360,7 @@ def reset(scene, init_graph=None, init_room=[]):
     print(len(file_content), temp_task_id)
     curr_task = file_content[temp_task_id]
     add_goal_class(curr_task)
-    print(temp_task_id)
+    # print(temp_task_id)
     scene = curr_task['env_id']
     init_graph = curr_task['init_graph']
     init_graph = clean_graph(init_graph)
@@ -365,6 +377,8 @@ def reset(scene, init_graph=None, init_room=[]):
     
     comm.add_character('Chars/Female1', initial_room=init_room[0])
     extra_agent_name = extra_agent_list[task_index_shuffle[task_index]]
+
+    print("TASK", extra_agent_name, temp_task_id)
     if extra_agent_name != "none":
         
         sys.path.append('../../')
@@ -524,8 +538,13 @@ def get_helper_action(gt_graph, goal_spec, previous_main_action, num_steps):
     print('({})'.format(extra_agent.agent_type), '--')
 
     if extra_agent.agent_type == 'MCTS' or extra_agent.agent_type == 'NOPA' or extra_agent.agent_type == 'HP_GP' or extra_agent.agent_type == 'HP_Random':
+        #import cProfile, pstats
+        #from pstats import SortKey
+        #with cProfile.Profile() as pr:
         command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action, num_steps)[0]
-    
+        #pstats.Stats(pr).sort_stats(SortKey.CUMULATIVE).print_stats()
+        #import ipdb
+        #ipdb.set_trace()
     else:
         raise Exception
         # The ids iwth which we can do actions
