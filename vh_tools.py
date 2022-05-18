@@ -291,13 +291,12 @@ def can_perform_action(action, object_name, object_id, current_graph, id2node, i
         if len(grabbed_objects) == 0:
             return None, {'msg': 'You did not grab any object'}
         else:
-            index_obj = action.split()[1]
+            index_obj_action = action.split()[1]
             if agent_id == 2:
-                import ipdb
-                ipdb.set_trace()
-            obj_names_grabbed = [(index_obj, '{}.{}'.format(id2node[index_obj]['class_name'], id2classid[index_obj])) for index_obj in grabbed_objects]
-            o2_id = [objname[0] for objname in obj_names_grabbed if index_obj == objname[1]][0]
-
+                o2_id = int(index_obj_action)
+            else:
+                obj_names_grabbed = [(index_obj, '{}.{}'.format(id2node[index_obj]['class_name'], id2classid[index_obj])) for index_obj in grabbed_objects]
+                o2_id = [objname[0] for objname in obj_names_grabbed if index_obj_action == objname[1]][0]
             # o2_id = grabbed_objects[0]
             if o2_id == o1_id:
                 return None, {'msg': 'cannot put an object into itself'}

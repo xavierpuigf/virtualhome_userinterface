@@ -150,11 +150,13 @@ def send_command(command):
             script, message = vh_tools.can_perform_action(action, object_name, object_id, graph, id2node=id2node, id2classid=id2classid)
             if script is not None:
                 executed_instruction = True
+                prev_instr_main = last_instr_main
                 last_instr_main = script
                 script = ['<char0> {}'.format(script)]
                 
                 if extra_agent is not None:
-                    command_other = next_helper_action
+                    goal_spec = {}
+                    command_other = get_helper_action(graph, goal_spec, prev_instr_main, record_step_counter)
                     if command_other is not None:
                         action_other, object_name_other, object_id_other = vh_tools.parse(command_other)
                         same_action = False
@@ -184,7 +186,7 @@ def send_command(command):
 
     if extra_agent is not None:
         goal_spec = {}
-        next_helper_action = get_helper_action(graph, goal_spec, last_instr_main, record_step_counter)
+        #next_helper_action = get_helper_action(graph, goal_spec, last_instr_main, record_step_counter)
         print("GETTING ACTION")
 
 
@@ -301,6 +303,14 @@ def send_command(command):
     info['all_done'] = False
     return images, info
 
+def clean_graph(graph):
+    remove_class = ['peach', 'plum', 'dishbowl', 'cellphone', 'alcohol', 'chair']
+    remove_ids = [node['id'] for node in graph['nodes'] if node['class_name'] in remove_class]
+
+    graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in remove_ids]
+    graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in remove_ids and edge['to_id'] not in remove_ids]
+    return graph
+
 def reset(scene, init_graph=None, init_room=[]):
     global lc
     global instance_colors
@@ -341,6 +351,7 @@ def reset(scene, init_graph=None, init_room=[]):
     print(temp_task_id)
     scene = curr_task['env_id']
     init_graph = curr_task['init_graph']
+    init_graph = clean_graph(init_graph)
     init_room = curr_task['init_rooms']
     #### Debug code finished.
 
@@ -348,6 +359,7 @@ def reset(scene, init_graph=None, init_room=[]):
     last_instr_main = None
     comm.reset(scene)
     if init_graph is not None:
+
         s, m = comm.expand_scene(init_graph)
         print("EXPNAD", m)
     
@@ -360,6 +372,7 @@ def reset(scene, init_graph=None, init_room=[]):
         comm.add_character('Chars/Male1', initial_room=init_room[1])
 
     s, g = comm.environment_graph()
+    # ipdb.set_trace()
     graph = g
     images = refresh_image(current_graph=g)
     # images = [image]
@@ -514,6 +527,7 @@ def get_helper_action(gt_graph, goal_spec, previous_main_action, num_steps):
         command_other = extra_agent.get_action(curr_obs, goal_spec, previous_main_action, num_steps)[0]
     
     else:
+        raise Exception
         # The ids iwth which we can do actions
         new_goal_spec = {}
         for pred, ct in goal_spec.items():
