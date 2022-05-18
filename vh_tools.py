@@ -247,6 +247,9 @@ def parse(action_str):
     if len(params) > 0:
         object_id = params[0][1]
         object_name = params[0][0]
+    
+    if 'put' in action_str:
+        action_string = action_string + ' '+str(object_id)
     return action_string, object_name, object_id
 
 def can_perform_action(action, object_name, object_id, current_graph, id2node, id2classid, agent_id=1):
@@ -289,7 +292,9 @@ def can_perform_action(action, object_name, object_id, current_graph, id2node, i
             return None, {'msg': 'You did not grab any object'}
         else:
             index_obj = action.split()[1]
-            
+            if agent_id == 2:
+                import ipdb
+                ipdb.set_trace()
             obj_names_grabbed = [(index_obj, '{}.{}'.format(id2node[index_obj]['class_name'], id2classid[index_obj])) for index_obj in grabbed_objects]
             o2_id = [objname[0] for objname in obj_names_grabbed if index_obj == objname[1]][0]
 

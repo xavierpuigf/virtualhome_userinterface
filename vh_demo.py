@@ -163,8 +163,9 @@ def send_command(command):
                                 same_action = True
 
                         if not same_action:
-                            other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, 2, id2node=id2node, id2classid=id2classid)
-
+                            other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, agent_id=2, id2node=id2node, id2classid=id2classid)
+                            if 'walktowards' in command_other:
+                                command_other = command_other + ' :3:'
                             script[0] = script[0] + '| <char1> {}'.format(command_other)
                 print("ACTION", script)
                 comm.render_script(script, skip_animation=True, recording=False, image_synthesis=[])

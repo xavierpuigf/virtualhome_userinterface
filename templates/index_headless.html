@@ -21,6 +21,7 @@ $.ajaxSetup({
 });
 // setup some JSON to use
 var is_walking = null; 
+var index_step = 0;
 var curr_activity_id = -1;
 var activity_count = 0;
 var show_modal = "{{ show_modal }}" == "True";
@@ -233,7 +234,7 @@ function refreshInfo(result){
 		if (grabbed_obj_second.length > 0){
 			var grabb_obj_str = ""
 			for (var it = 0; it < grabbed_obj.length; ++it){
-				grabb_obj_str += " "+grabbed_obj[it][0] + "." + strgrabbed_obj[it][2];
+				grabb_obj_str += " "+grabbed_obj_second[it][0] + "." + grabbed_obj_second[it][2];
 				
 			}
 			$('#grab_agent_2').text(grabb_obj_str);
@@ -517,6 +518,7 @@ function modalNextTask(){
 	}
 	
 }
+
 function nextTask(data_modal=null){
     scene_id = -1;
     content_json = {'instruction': 'reset', 'scene_id': scene_id}
@@ -552,10 +554,35 @@ function nextTask(data_modal=null){
 	async:true});
 
 }
+function blockButtons(){
 
-function doWork(content_str, other_info=null) {
+}
+function unblockButtons(){
+
+}
+function doWork(content_str, other_info=null, repeated=-1) {
+	var stop_run = false;
 	// ajax the JSON to the server
-	content_json = {'instruction': content_str, 'other_info': other_info}
+	var curr_step = 0;
+	console.log(content_str, repeated, curr_step)
+	if (repeated >= 0){
+		if (repeated != index_step){
+			stop_run = true;
+		}
+		curr_step = repeated;
+	}
+	else {
+
+		index_step += 1;
+		curr_step = index_step;
+	}
+
+
+	if (stop_run){
+		return;
+	}
+	content_json = {'instruction': content_str, 'other_info': other_info, 'current_step': curr_step}
+	console.log(content_json)
 	if (content_str == 'walktowards' && other_info != null){
 	    is_walking = other_info;
 	
@@ -565,8 +592,10 @@ function doWork(content_str, other_info=null) {
 	}
 	var content = JSON.stringify(content_json);
 	startTime = new Date();
+	$('#compute_spinner').show();
 	$.post("receiver", content, function(result){
 	    result = JSON.parse(result);
+	    curr_content = JSON.parse(content)
 	   if (result['resp']['all_done']){
 		endActivity();
 		return;
@@ -575,6 +604,7 @@ function doWork(content_str, other_info=null) {
 	    $('#currentactions').empty();
 	    $('#selectedobject').text('');
 	    $('#selectedcontainer').hide();
+	    var rep = curr_content['current_step'];
 	    endTime = new Date();
 	    endTime1 = new Date();
 	    console.log("here");
@@ -606,6 +636,14 @@ function doWork(content_str, other_info=null) {
 
         refreshInfo(result);
 
+	    if (is_walking != null){
+	    	// There was a new diffewrent action
+	    	if (content_str != curr_content['instruction']){
+	    		console.log(content_str)
+	    		is_walking = null;	
+	    	}
+	    	
+	    }
 	    if (is_walking != null)
 	    {
             if (result['resp']['other_info']['close_objects'].includes(is_walking[0][1]) ||
@@ -628,16 +666,26 @@ function doWork(content_str, other_info=null) {
 		    		
                 }
                 is_walking = null;
+            	
+				$('#compute_spinner').hide();
             }
             else
             {
-                doWork(content_str, other_info);
+
+				$('#compute_spinner').show();
+				console.log("repeating", rep, curr_content['instruction']);
+                doWork(content_str, other_info, rep);
+
+				$('#compute_spinner').hide();
             }
 	    }
 	    else
         {
 		    addVisibleButtons(result['resp']['other_info']['visible_objects'], result['resp']['object_action'], result['resp']['other_info']['goal_id'], result['resp']['other_info']['interactable_objects'])
+
+			$('#compute_spinner').hide();
 	    }
+
 	});
 	// stop link reloading the page
 }
@@ -804,6 +852,12 @@ function doWork(content_str, other_info=null) {
 		Loading...
 		<div class="spinner-border" role="status">
   		<span class="sr-only">Loading...</span>
+		</div>
+	</div>
+	<div id="compute_spinner" style="display: none">
+		Wait, computing...
+		<div class="spinner-border" role="status">
+  		<span class="sr-only">Wait...</span>
 		</div>
 	</div>
 	<button disabled class="btn btn-primary" id="nextTask" onclick=nextTask()> Next Task </button>
