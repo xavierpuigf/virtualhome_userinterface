@@ -321,9 +321,9 @@ def can_perform_action(action, object_name, object_id, current_graph, id2node, i
             elif 'SURFACES' in id2node[o1_id]['properties']:
                 action = 'putback'
 
-    action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
+    action_str = f'[{action}] {obj2_str} {obj1_str}'
+    action_str = re.sub(' +', ' ', action_str)
 
-    print(action_str)
     return action_str, {'msg': "Success"}
 
 
