@@ -180,7 +180,7 @@ function refreshScene(include_top=false){
 		$("#second_agent_info").show();
 		if (grabbed_obj_second.length > 0){
 			for (var it = 0; it < grabbed_obj_second.length; ++it){
-				var grabb_obj_str = grabbed_obj_second[it][0] + "." + str(grabbed_obj_second[it][2]);
+				var grabb_obj_str = grabbed_obj_second[it][0] + "." + grabbed_obj_second[it][2];
 				$('#grab_agent_2').text(grabb_obj_str);
 			}
 		}
