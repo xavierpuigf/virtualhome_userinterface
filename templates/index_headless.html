@@ -305,6 +305,7 @@ function addVisibleButtons(visible_objects, results, object_id_target=null, inte
     for (var i = 0; i < rooms_box.length; i++){
     	$(rooms_box[i]).empty();
     }
+    $("#grabbed_obj2_button").empty();
     //$('#visible_objects_grab').empty();
     $('#visible_objects_container').empty();
 	for (var i = 0; i <rooms_box.length; i++){
@@ -358,15 +359,26 @@ function addVisibleButtons(visible_objects, results, object_id_target=null, inte
 			new_line = true;
 		}
 
+
 		if (is_grabbable){
 
 			// if (new_line && count_grab > 0){
 			// 	$('#visible_objects_grab').append('<br>');	
 			// }
 			if (visible_objects[i][6] == -1){
-				//console.log(visible_objects[i])
+				console.log(visible_objects[i]);
+				// if not in a container
 				var room_obj = visible_objects[i][7];
-				$('#rooms_'+room_obj).append(button_room);	
+				if (room_obj != 2){
+
+					//console.log(visible_objects[i])
+					
+					$('#rooms_'+room_obj).append(button_room);		
+				}
+				else {
+					console.log(visible_objects[i], button_room);
+					$('#grabbed_obj2_button').append(button_room);
+				}
 			}
 			else {
 				// console.log(visible_objects[i][6]);
@@ -949,6 +961,7 @@ function doWork(content_str, other_info=null, repeated=-1) {
 			    <br>
 			    <span> Agent 2 Grabbed Object: </span>
 			    <span style="font-weight: bold" id="grab_agent_2">  </span>
+			    <div id="grabbed_obj2_button"></div>
 			</div>
 		    </div>
 		</div>

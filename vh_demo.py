@@ -163,6 +163,8 @@ def send_command(command):
                 if script is not None:
                     script = ['<char0> {}'.format(script)]
                 
+                # command_other = '[grab] <wineglass> (389)'
+                # script[0] = '<char1> {}'.format(command_other)
                 if extra_agent is not None:
                     goal_spec = {}
                     command_other = get_helper_action(graph, goal_spec, prev_instr_main, record_step_counter)
@@ -177,6 +179,7 @@ def send_command(command):
                             other_script, _ = vh_tools.can_perform_action(action_other, object_name_other, object_id_other, graph, agent_id=2, id2node=id2node, id2classid=id2classid)
                             if 'walktowards' in command_other:
                                 command_other = command_other + ' :3:'
+                            
                             if script is None:
                                 script =  ['<char1> {}'.format(command_other)]
                             else:

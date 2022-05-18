@@ -371,7 +371,7 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
             rooms_obj[edge['from_id']] = edge['to_id']
 
     for id_obj in ids:
-        if id_obj in objects_grabbed or id_obj in objects_grabbed_second:
+        if id_obj in objects_grabbed:
             continue
             # actions.append('walktowards')
 
@@ -419,19 +419,29 @@ def graph_info(graph, id2classid, ids_select=None, restrictive=True):
 
         is_close = '1' if id_obj in objects_close else '0'
         container = -1
-        if id_obj in rooms_obj:
-            room_obj = rooms_obj[id_obj]
-        else:
-            room_obj = rooms_obj[containers[id_obj]]
-        # print(rooms_obj)
-        room_name = id2node[room_obj]['class_name']
-        # to what container it belongs
-        if id_obj in containers:
-            container = containers[id_obj]
 
-        object_curr = [id_obj, node['class_name'], id2classid[id_obj], obj_type, is_close, is_open, container, room_obj, room_name]
-        objects_and_actions.append((object_curr, actions))
-    
+        if id_obj in objects_grabbed_second:
+            # import ipdb
+            # ipdb.set_trace()
+            room_obj = rooms_obj[2]
+            room_name = id2node[room_obj]['class_name']
+            object_curr = [id_obj, node['class_name'], id2classid[id_obj], obj_type, is_close, is_open, container, 2, 'character']
+            objects_and_actions.append((object_curr, actions))
+
+        else:
+            if id_obj in rooms_obj:
+                room_obj = rooms_obj[id_obj]
+            else:
+                room_obj = rooms_obj[containers[id_obj]]
+            # print(rooms_obj)
+            room_name = id2node[room_obj]['class_name']
+            # to what container it belongs
+            if id_obj in containers:
+                container = containers[id_obj]
+
+            object_curr = [id_obj, node['class_name'], id2classid[id_obj], obj_type, is_close, is_open, container, room_obj, room_name]
+            objects_and_actions.append((object_curr, actions))
+        
     
     visible_objects = [v[0] for v in objects_and_actions]
     grabbed_second = -1
