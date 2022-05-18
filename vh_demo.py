@@ -405,16 +405,16 @@ def reset(scene, init_graph=None, init_room=[]):
         extra_agent.reset(observed_graph, gt_graph, container_id, task_goal)
 
     if extra_agent_name == "hp_random":
-        extra_agent = agents.HP_agent(agent_id=2,
-                                       char_index=1,
-                                       max_episode_length=5,
-                                       num_simulation=100,
-                                       max_rollout_steps=5,
-                                       c_init=0.1,
-                                       c_base=1000000,
-                                       num_samples=20,
-                                       num_processes=1,
-                                       seed=temp_task_id)
+        extra_agent = agents.HP_random_agent(agent_id=2,
+                                               char_index=1,
+                                               max_episode_length=5,
+                                               num_simulation=100,
+                                               max_rollout_steps=5,
+                                               c_init=0.1,
+                                               c_base=1000000,
+                                               num_samples=20,
+                                               num_processes=1,
+                                               seed=temp_task_id)
         gt_graph = g
         #print([node for node in gt_graph['nodes'] if node['id']  in [1,2]])
         task_goal = None
